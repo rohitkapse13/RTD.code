@@ -1,1 +1,124 @@
+const int Relay = 2;      // Digital pin for Relay
+const int AIR1= 3;  // Digital pin for Tractive System button
+const int AIR2=4;
+const int ST_button = 5;
+const int buzzer = 6;      // Digital pin for Start button
 
+bool ledOn = false;
+int buttonstate2,AUX1,AUX2;
+
+const int potentiometer1 = A0;  // Analog input pin for the 5V potentiometer
+const int potentiometer2 = A1;  // Analog input pin for the 3.3V potentiometer
+const int bpsread = A2;         // Analog input for Brake Pressure Sensor
+
+float potentiometer_value1, potentiometer_value2, brakepressure;
+float voltage1, voltage2, voltage3;
+float value1, value2, value3;
+float brakevalue;
+
+unsigned long previousTime = 0;  // Starting time of Arduino
+unsigned long buzzerStartTime = 0;
+const unsigned long buzzerDuration = 3000;  // 3 seconds for the buzzer
+
+enum State {
+  ts_not_active,
+  st_button_notactive,
+  BUZZER_ON,
+  RELAY_ON
+};
+
+State currentState = st_button_notactive;
+
+void setup() {
+  pinMode(Relay, OUTPUT);
+  pinMode(AIR1, INPUT);
+   pinMode(AIR2, INPUT);
+  pinMode(ST_button, INPUT_PULLUP);
+  pinMode(potentiometer1, INPUT);
+  pinMode(potentiometer2, INPUT);
+  pinMode(bpsread, INPUT);
+  pinMode(buzzer, OUTPUT);
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  potentiometer_value1 = analogRead(potentiometer1);
+  potentiometer_value2 = analogRead(potentiometer2);
+  brakepressure = analogRead(bpsread);
+
+  voltage1 = potentiometer_value1 * (5.0 / 1023);
+  voltage2 = potentiometer_value2 * (3.3 / 676);
+  voltage3 = brakepressure * (4.5 / 921);
+
+  value1 = map(potentiometer_value1, 0, 1023, 0, 100);
+  value2 = map(potentiometer_value2, 0, 676, 0, 100);
+  value3 = map(brakepressure, 0, 921, 0, 100);
+
+  AUX1 = digitalRead(AIR1);
+  AUX2 = digitalRead(AIR2);
+  buttonstate2 = digitalRead(ST_button);
+
+   switch (currentState) {
+  //   case ts_not_active:
+  //     if (AUX1==HIGH && AUX2==HIGH ) {
+  //       currentState = st_button_notactive; 
+  //     } 
+  //     else{
+  //       currentState=ts_not_active;
+  //     }
+  //     break;
+//converting the case sta
+    case st_button_notactive:
+      if (buttonstate2 == HIGH && value3>12) {
+        currentState = BUZZER_ON;
+        buzzerStartTime = millis();
+      }
+      break;
+
+    case BUZZER_ON:
+      digitalWrite(buzzer, HIGH);
+      if (millis() - buzzerStartTime >= buzzerDuration) {
+        digitalWrite(buzzer, LOW);
+        currentState = RELAY_ON;
+      }
+      break;
+
+    case RELAY_ON:
+     // digitalWrite(Relay, HIGH);
+      if (value1 > 21 && value2 > 18) {
+        digitalWrite(Relay, HIGH);
+        if (abs(value1 - value2) > 25) {
+          digitalWrite(Relay, LOW);
+          // Serial.print("2212");
+        }
+      } else {
+        digitalWrite(Relay, LOW); 
+      }
+
+      if (value1 > 44 && value2 > 38 && value3 >15) {
+        digitalWrite(Relay, LOW);
+            
+        do {
+          // potentiometer_value1 = analogRead(potentiometer1);
+          // potentiometer_value2 = analogRead(potentiometer2);
+          // brakepressure = analogRead(bpsread);
+
+          // value1 = float(map(potentiometer_value1, 0, 1023, 0, 100));
+          // value2 = float(map(potentiometer_value2, 0, 676, 0, 100));
+          // value3 = float(map(brakepressure, 0, 921, 0, 100));
+          
+          //  AUX1 = digitalRead(AIR1);
+          //  AUX2 = digitalRead(AIR2);
+          //  buttonstate2 = digitalRead(ST_button);
+
+        } while (value1 > 20 || value2 > 14 || value3 > 11);
+      }
+      break;
+
+    default:
+
+      break;
+  }
+  
+}
